@@ -23,6 +23,7 @@ echo '-------------------------------NEXT NPM!!!!'
 
 
 #### NPM AND Node Information BEG
+#### NPM AND Node Information BEG
 echo 'NPM AND Node Information BEG'
 
 echo 'NPM AND Node Information PWD'
@@ -93,13 +94,22 @@ pwd
 jestExecutionResult=$(cat ./../jestExecutionResult)
 echo $jestExecutionResult
 
+
+
 echo '--- REPORT_DIR'
 REPORT_DIR=`echo $bamboo_resultsUrl | cut -d"?" -f2 | cut -d"=" -f2`
 echo REPORT_DIR
 echo '-------------- CMD 1 END vvvvvvvv --------'
 
 echo '-------------- Git stuff 1.1 START vvvvvvvv --------'
-# cd storefront
+
+if [[ $jestExecutionResult -eq 1 ]]; then
+  echo '-----OK LETS UPDATE SNAPSHOTS-----'
+  npm run test -u
+else
+  echo '--- everything passed NOTHING TO UPDATE!---'
+fi
+
 pwd
 git status
 git branch
@@ -111,10 +121,8 @@ git commit -m "test(snapshot): update for SFW-xxx" -n
 git push origin feature/update-snapshot-$REPORT_DIR
 echo "feature/update-snapshot-$REPORT_DIR" >> ./../snapshotUpdateBranchName
 snapshotUpdateBranchName=$(cat ./../snapshotUpdateBranchName)
-echo $snapshotUpdateBranchName
-echo '-------------- Git stuff 1.1 END vvvvvvvv --------'
 
-# echo 'NPM AND Node Information END'
+echo '-------------- Git stuff 1.1 END vvvvvvvv --------'
 
 #### NPM AND Node Information BEG
 
@@ -123,7 +131,7 @@ echo '-------------- Git stuff 1.1 END vvvvvvvv --------'
 
 
 #### Save Snapshots As Reporter BEG
-
+#### Save Snapshots As Reporter BEG
 echo 'Save Snapshots As Reporter BEG'
 pwd
 
@@ -151,14 +159,21 @@ echo '-------------- SNAPSHOT DIR END 1 --------'
 
 echo "bamboo_planRepository_1_revision vvv"
 echo $bamboo_planRepository_1_revision
-
+ls $bamboo_build_working_directory/visual-regression-app
 REPORT_DIR=`echo $bamboo_resultsUrl | cut -d"?" -f2 | cut -d"=" -f2`
-aws s3 cp $bamboo_build_working_directory/visual-regression-app/src/__image_snapshots__/sample-test-test-js-create-account-page-test-show-correct-page-variant-and-filled-with-name-1-snap.png s3://sfw-pixel-snapshots/$REPORT_DIR/__image_snapshots__/sample-test-test-js-create-account-page-test-show-correct-page-variant-and-filled-with-name-1-snap.png
-aws s3 presign  s3://sfw-pixel-snapshots/$REPORT_DIR/__image_snapshots__/sample-test-test-js-create-account-page-test-show-correct-page-variant-and-filled-with-name-1-snap.png --expires-in=${PRESIGN_EXPIRATION_SECONDS}
+aws s3 cp $bamboo_build_working_directory/visual-regression-app/reporter.html s3://sfw-pixel-snapshots/$REPORT_DIR/reporter.html
+echo $(aws s3 presign  s3://sfw-pixel-snapshots/$REPORT_DIR/reporter.html --expires-in=${PRESIGN_EXPIRATION_SECONDS}
+) > ../awsReportUrl
+$awsReportUrl = $(cat ../awsReportUrl);
 
-aws s3 cp $bamboo_build_working_directory/visual-regression-app/src/dummy/index.html s3://sfw-pixel-snapshots/reporter/index.html
-aws s3 presign s3://sfw-pixel-snapshots/reporter/index.html --expires-in=${PRESIGN_EXPIRATION_SECONDS}
+awsReportUrl=$(aws s3 presign  s3://sfw-pixel-snapshots/$REPORT_DIR/reporter.html --expires-in=${PRESIGN_EXPIRATION_SECONDS})
+echo 'awsReportUrl vvvv'
+echo $awsReportUrl
+
+# aws s3 cp $bamboo_build_working_directory/visual-regression-app/src/dummy/index.html s3://sfw-pixel-snapshots/reporter/index.html
+# aws s3 presign s3://sfw-pixel-snapshots/reporter/index.html --expires-in=${PRESIGN_EXPIRATION_SECONDS}
 echo '-------------- AWS END ^^^^^^^^ --------'
+
 
 echo '-------------- Git stuff START vvvvvvvv --------'
 echo 'into storefront'
@@ -172,6 +187,8 @@ git status
 git branch
 git checkout -b feature/update-snapshot-$REPORT_DIR
 
+
+
 echo '-------------- Git stuff END vvvvvvvv --------'
 
 
@@ -179,18 +196,27 @@ echo '-------------- PR START vvvvvvvv --------'
 # snapshotUpdateBranchName
 snapshotUpdateBranchName=$(cat ../snapshotUpdateBranchName)
 echo $snapshotUpdateBranchName
-curl -H "Authorization: token $bamboo_chewbot_github_token_password" --header "Content-Type: application/json" --request POST --data '{"title": "Amazing new feature","body": "Please pull this in!","head": "'$snapshotUpdateBranchName'","base": "master"}' https://api.github.com/repos/Chewy-Inc/storefront/pulls
+# curl -H "Authorization: token $bamboo_chewbot_github_token_password" --header "Content-Type: application/json" --request POST --data '{"title": "Test Test Test","body": "Please ignore this test PR!","head": "'$snapshotUpdateBranchName'","base": "master"}' https://api.github.com/repos/Chewy-Inc/storefront/pulls
+
+
+
+## DISABLED vvv
+
+prData="$(curl -H "Authorization: token $bamboo_chewbot_github_token_password" --header "Content-Type: application/json" --request POST --data '{"title": "Test Test Test","body": "Please ignore this test PR! here is the link to see image diff report '$awsReportUrl'","head": "'$snapshotUpdateBranchName'","base": "feature/SFW-9301-visual-regression-app"}' https://api.github.com/repos/Chewy-Inc/storefront/pulls
+)"
+echo 'prData vvv'
+echo $prData
+
+## DISABLED ^^^
+
+
 
 echo '-------------- PR END ^^^^^^^^ --------'
 
 
 echo '-------------- CMD 1.2 BEG vvvvvvvv --------'
 pwd
-jestExecutionResult=$(cat ../jestExecutionResult)
-echo $jestExecutionResult
 
-jestExecutionResult=$(cat ./../jestExecutionResult)
-echo $jestExecutionResult
 
 snapshotUpdateBranchName=$(cat ../snapshotUpdateBranchName)
 echo $snapshotUpdateBranchName
@@ -206,12 +232,13 @@ echo '-------------- CMD 1.2 END vvvvvvvv --------'
 
 echo 'Save Snapshots As Reporter END'
 
+#### Save Snapshots As Reporter
+
 
 #### Save Snapshots As Reporter END
 
 
 #### report devenv status to github BEG
-
 echo 'report devenv status to github PWD'
 pwd
 echo 'report devenv status to github ls prev dir 1'
@@ -233,6 +260,9 @@ echo '-------------- CMD 3 BEG vvvvvvvv --------'
 ls -lA
 jestExecutionResult=$(cat ./../jestExecutionResult)
 echo $jestExecutionResult
+
+awsReportUrl=$(cat ./../awsReportUrl)
+echo $awsReportUrl
 echo '-------------- CMD 3 END vvvvvvvv --------'
 
 echo '-------------------------------END OF NPM STUFF'
@@ -258,7 +288,7 @@ build_state_desc_2="Oh nooooooooo VISUAL REGRESSION T_T"
 
 curl -v -H "Authorization: token ${bamboo.repo_status_password}" https://api.github.com/repos/${org_repo}/statuses/${revision} --data "{\"state\": \"${build_state}\",\"target_url\": \"${bamboo_resultsUrl}\",\"description\": \"${build_state_desc}\",\"context\": \"ci/bamboo\"}"
 
-curl -v -H "Authorization: token ${bamboo.repo_status_password}" https://api.github.com/repos/${org_repo}/statuses/${revision} --data "{\"state\": \"${build_state_2}\",\"target_url\": \"${bamboo_resultsUrl}\",\"description\": \"${build_state_desc_2}\",\"context\": \"ci/visualregression\"}"
+curl -v -H "Authorization: token ${bamboo.repo_status_password}" https://api.github.com/repos/${org_repo}/statuses/${revision} --data "{\"state\": \"${build_state_2}\",\"target_url\": \"${awsReportUrl}\",\"description\": \"${build_state_desc_2}\",\"context\": \"ci/visualregression\"}"
 
 
 
